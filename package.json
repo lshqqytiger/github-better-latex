@@ -1,0 +1,21 @@
+{
+  "name": "github-better-latex",
+  "version": "0.1.0",
+  "packageManager": "pnpm@12.11.2",
+  "description": "A Chromium extension for rendering LaTeX in GitHub Markdown.",
+  "scripts": {
+    "build": "tsc --noEmit -p tsconfig.json && esbuild src/content.ts src/background.ts --bundle --format=iife --outdir=dist --entry-names=[name] && node scripts/copy-manifest.mjs"
+  },
+  "dependencies": {
+    "dompurify": "^3.3.1",
+    "katex": "^0.18.0",
+    "markdown-it": "^14.1.0",
+    "markdown-it-texmath": "^1.0.0"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.1.38",
+    "@types/markdown-it": "^14.1.2",
+    "esbuild": "^0.25.0",
+    "typescript": "^5.9.3"
+  }
+}

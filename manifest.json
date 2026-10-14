@@ -1,0 +1,25 @@
+{
+  "manifest_version": 3,
+  "name": "GitHub LaTeX",
+  "version": "0.1.0",
+  "description": "Render LaTeX in GitHub Markdown.",
+  "host_permissions": [
+    "https://github.com/*",
+    "https://raw.githubusercontent.com/*"
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["katex.min.css", "texmath.css", "fonts/*"],
+      "matches": ["https://github.com/*"]
+    }
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://github.com/*"],
+      "js": ["content.js"]
+    }
+  ]
+}
