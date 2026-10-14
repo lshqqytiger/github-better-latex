@@ -13,7 +13,7 @@ interface FetchMarkdownResponse {
 
 const markdown = new MarkdownIt({ html: false, linkify: true }).use(texmath, {
   engine: katex,
-  delimiters: "brackets",
+  delimiters: ["brackets", "dollars"],
   katexOptions: { throwOnError: false },
 });
 

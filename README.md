@@ -9,8 +9,8 @@ A Chromium extension that improves LaTeX rendering on GitHub.
 - Repairs failed display-math blocks in Copilot Chat when GitHub's error
   fallback still contains the original TeX source.
 
-Markdown math uses `\(...\)` for inline expressions and `\[...\]` for display
-expressions. The Copilot Chat repair only touches failed display-math blocks;
+Markdown math supports `$...$` and `\(...\)` for inline expressions, and
+`$$...$$` and `\[...\]` for display expressions. The Copilot Chat repair only touches failed display-math blocks;
 other message content and successfully rendered equations are left intact.
 
 ## Install

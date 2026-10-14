@@ -3,7 +3,7 @@ declare module "markdown-it-texmath" {
 
   interface TexmathOptions {
     engine: typeof import("katex");
-    delimiters: "brackets";
+    delimiters: "brackets" | "dollars" | ("brackets" | "dollars")[];
     katexOptions?: import("katex").KatexOptions;
   }
 

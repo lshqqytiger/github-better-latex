@@ -35,8 +35,8 @@ protection.
 ## Manual Smoke Checks
 
 1. Build and load `dist/` in Chromium.
-2. Open a GitHub repository `.md` blob containing inline `\(...\)` and display
-   `\[...\]` math. Confirm the article is rendered and KaTeX fonts load from
+2. Open a GitHub repository `.md` blob containing inline `$...$` and `\(...\)`
+   math, and display `$$...$$` and `\[...\]` math. Confirm the article is rendered and KaTeX fonts load from
    the extension package.
 3. Open a Copilot Chat response containing a failed display-math block whose
    fallback includes a `<pre>` with TeX, such as a formula using

@@ -16,7 +16,7 @@ into `dist/`.
    requests to `raw.githubusercontent.com`, which is also listed in the host
    permissions.
 4. The content script renders the source with markdown-it and
-   markdown-it-texmath, using KaTeX's bracket delimiters. Raw HTML is disabled
+   markdown-it-texmath, using both bracket and dollar delimiter modes. Raw HTML is disabled
    in Markdown parsing, and DOMPurify sanitizes the resulting HTML before it
    replaces the Markdown article.
 
