@@ -3,7 +3,7 @@
 ## Prerequisites
 
 - Node.js
-- pnpm 12.11.2 (the version recorded in `package.json`)
+- pnpm 12.11.2
 
 ## Build
 
@@ -19,9 +19,7 @@ then stages `manifest.json`, KaTeX stylesheets, and fonts in `dist/`. Load
 `dist/` as an unpacked extension in Chromium. `node_modules/` and `dist/` are
 generated and ignored by Git.
 
-`pnpm-workspace.yaml` explicitly allows esbuild's install script, which is
-required to install its platform-specific binary under pnpm's build-script
-protection.
+`pnpm-workspace.yaml` allows esbuild's install script for its platform binary.
 
 ## Source Layout
 
@@ -37,16 +35,13 @@ protection.
 
 ## Manual Smoke Checks
 
-Run `pnpm test` for DOM regression checks covering exact source extraction,
-whole-formula rendering, literal parentheses, source validation, message
-boundaries, committed alternate selection, startup retries, message validation,
-source loss, and cleanup. Tests use synthetic React props and HTML;
-they do not verify the live site's private React prop structure.
+Run `pnpm test` for parser and Copilot lifecycle regressions. Tests use synthetic
+React props and HTML; live GitHub compatibility requires browser checks.
 
 1. Build and load `dist/` in Chromium.
 2. Open a GitHub repository `.md` blob containing inline `$...$` and `\(...\)`
-   math, and display `$$...$$` and `\[...\]` math. Confirm the article is rendered and KaTeX fonts load from
-   the extension package.
+   math, and display `$$...$$` and `\[...\]` math. Confirm rendering and font
+   loading from the extension package.
 3. Open a Copilot Chat response containing a failed display-math block whose
    fallback includes a `<pre>` with TeX, such as a formula using
    `\operatorname{...}`. Confirm only that failed block is replaced with

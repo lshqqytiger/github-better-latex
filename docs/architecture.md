@@ -1,9 +1,7 @@
 # Architecture
 
-The extension uses a Manifest V3 content script for page integration and a
-service worker for repository Markdown fetches. TypeScript is checked with
-`tsc` and bundled with esbuild; the build copies the manifest and KaTeX assets
-into `dist/`.
+The Manifest V3 extension uses content scripts for page integration and a
+service worker for repository Markdown fetches.
 
 ## Repository Markdown
 
@@ -13,16 +11,13 @@ into `dist/`.
    worker to fetch it with the browser's GitHub session credentials.
 3. The worker accepts requests only from `github.com` and only for raw URLs on
    `github.com` with the expected repository path. GitHub may redirect these
-   requests to `raw.githubusercontent.com`, which is also listed in the host
-   permissions.
+   requests to `raw.githubusercontent.com`.
 4. The content script renders the source with markdown-it and
-   markdown-it-texmath, using both bracket and dollar delimiter modes. Raw HTML is disabled
-   in Markdown parsing, and DOMPurify sanitizes the resulting HTML before it
+   markdown-it-texmath with bracket and dollar delimiters. Raw HTML is disabled,
+   and DOMPurify sanitizes the resulting HTML before it
    replaces the Markdown article.
 
-The surrounding GitHub page is preserved. A mutation observer and GitHub
-navigation events let the content script handle pages loaded or changed by
-client-side navigation.
+A mutation observer and navigation events handle client-side page changes.
 
 The shared parser protects complete multiline `\(...\)` and `\[...\]` regions
 before Markdown block parsing. Temporary tokens keep blank lines and leading
@@ -41,15 +36,14 @@ A separate `MAIN`-world script reads React fiber ancestors of each
 `[data-copilot-markdown="true"]` body, stopping at the enclosing message's DOM
 boundary. The root's committed fiber selects the active alternate after React
 updates. The bridge accepts only `message` props containing an assistant role, string
-ID, and string content. This private React structure is an integration
-assumption, not a stable GitHub API; saved HTML alone cannot verify it.
+ID, and string content. This relies on private React internals.
 
 The bridge sends the original Markdown and a per-element token using
 `window.postMessage`. The isolated content script validates the envelope,
 current URL, and target token, then renders the entire message body with the
 same Markdown parser and DOMPurify sanitizer used for repository files. Page
-messages are untrusted input, not authenticated extension commands. No network
-fetch or privileged extension operation is initiated by this bridge.
+messages are untrusted input. The bridge initiates no network requests or
+privileged extension operations.
 
 Source and output are cached per DOM element. The original message body is
 hidden, not overwritten; output is placed in an extension-owned sibling so
@@ -61,8 +55,7 @@ source if the isolated listener missed the first publication.
 Surrounding message controls are preserved, but code preview widgets, citations,
 and other GitHub-specific body widgets appear as standard Markdown output.
 
-If no validated source is available, inline content is left untouched. There is
-no parenthesis heuristic, reverse Markdown reconstruction, or chat API capture.
+If no validated source is available, inline content is left untouched.
 
 KaTeX styles and fonts are packaged with the extension. The content script
 loads styles through `chrome.runtime.getURL`; the manifest exposes those assets
@@ -77,6 +70,4 @@ to GitHub pages so font URLs resolve from the extension package.
 - Repository source is parsed with raw HTML disabled and sanitized before DOM
   insertion.
 
-The extension currently supports `.md` blob files on branch names without `/`.
-It does not currently handle tags, commit-SHA paths, other Markdown extensions,
-or Copilot inline formulas whose original message source is unavailable.
+See the [README](../README.md#scope) for supported page types and limitations.

@@ -19,13 +19,11 @@ A Chromium extension that improves LaTeX rendering on GitHub.
 - Repairs failed display-math blocks in Copilot Chat when GitHub's error
   fallback still contains the original TeX source.
 - Re-renders Copilot message bodies from original Markdown when it is available
-  in the message's React props, avoiding guesses about ordinary parentheses.
+  in the message's React props.
 
 Markdown math supports `$...$` and `\(...\)` for inline expressions, and
-`$$...$$` and `\[...\]` for display expressions. Full Copilot rendering hides
-the original Markdown body and displays a rendered sibling, leaving React's
-original nodes and surrounding message controls intact. GitHub-specific widgets
-inside the body appear as standard Markdown output.
+`$$...$$` and `\[...\]` for display expressions. Copilot message controls are
+preserved; GitHub-specific body widgets appear as standard Markdown output.
 
 ## Install
 
@@ -51,7 +49,6 @@ reload the extension from the extensions page and refresh GitHub.
 
 Repository rendering currently targets GitHub blob URLs with a `.md` file on a
 single-segment branch name. Copilot source access relies on private React
-internals and must be verified against the live GitHub version. If the expected
+internals that may change. If the expected
 assistant-message props are absent, the message body is left unchanged; failed
-display math can still be repaired from GitHub's `<pre>` fallback. The extension
-does not guess inline formulas or reconstruct Markdown from rendered HTML.
+display math can still be repaired from GitHub's `<pre>` fallback.
