@@ -2,20 +2,19 @@
 
 import DOMPurify from "dompurify";
 import katex from "katex";
-import MarkdownIt from "markdown-it";
-import texmath from "markdown-it-texmath";
+import {
+  cleanupCopilotMarkdown,
+  renderCopilotMarkdown,
+  restoreCopilotMarkdown,
+} from "./copilot-math";
+import { renderMarkdown } from "./markdown";
+import { createMathOptions } from "./math-options";
 
 interface FetchMarkdownResponse {
   ok: boolean;
   markdown?: string;
   error?: string;
 }
-
-const markdown = new MarkdownIt({ html: false, linkify: true }).use(texmath, {
-  engine: katex,
-  delimiters: ["brackets", "dollars"],
-  katexOptions: { throwOnError: false },
-});
 
 let pendingPageUrl: string | null = null;
 
@@ -36,8 +35,53 @@ function installStylesheet(filename: string): void {
 installStylesheet("katex.min.css");
 installStylesheet("texmath.css");
 
+window.addEventListener("message", (event: MessageEvent<unknown>) => {
+  if (
+    event.source !== window ||
+    event.origin !== location.origin ||
+    (location.pathname !== "/copilot" &&
+      !location.pathname.startsWith("/copilot/c/"))
+  ) {
+    return;
+  }
+  const data = event.data;
+  if (
+    typeof data !== "object" ||
+    data === null ||
+    !("type" in data) ||
+    data.type !== "github-better-latex:copilot-markdown" ||
+    !("page" in data) ||
+    data.page !== location.href ||
+    !("token" in data) ||
+    typeof data.token !== "string" ||
+    !("content" in data) ||
+    (typeof data.content !== "string" && data.content !== null)
+  ) {
+    return;
+  }
+  const root = Array.from(
+    document.querySelectorAll<HTMLElement>('[data-copilot-markdown="true"]'),
+  ).find((element) => element.dataset.githubLatexSourceId === data.token);
+  if (root) {
+    if (data.content === null) {
+      restoreCopilotMarkdown(root);
+      return;
+    }
+    renderCopilotMarkdown(root, data.content, (source: string) =>
+      DOMPurify.sanitize(renderMarkdown(source)),
+    );
+  }
+});
+window.postMessage(
+  "github-better-latex:request-copilot-markdown",
+  location.origin,
+);
+
 function renderCopilotMathErrors(): void {
-  if (!location.pathname.startsWith("/copilot/c/")) {
+  if (
+    location.pathname !== "/copilot" &&
+    !location.pathname.startsWith("/copilot/c/")
+  ) {
     return;
   }
 
@@ -54,8 +98,8 @@ function renderCopilotMathErrors(): void {
     }
 
     katex.render(tex, renderer, {
+      ...createMathOptions(),
       displayMode: true,
-      throwOnError: false,
     });
   });
 }
@@ -76,6 +120,7 @@ function getRawMarkdownUrl(pageUrl: URL): string | null {
 }
 
 async function renderMarkdownPage(): Promise<void> {
+  cleanupCopilotMarkdown();
   renderCopilotMathErrors();
 
   const pageUrl = new URL(location.href);
@@ -110,7 +155,7 @@ async function renderMarkdownPage(): Promise<void> {
       return;
     }
 
-    article.innerHTML = DOMPurify.sanitize(markdown.render(response.markdown));
+    article.innerHTML = DOMPurify.sanitize(renderMarkdown(response.markdown));
     article.dataset.githubLatexRendered = pageUrl.href;
   } catch (error) {
     console.warn("GitHub LaTeX could not render this Markdown file.", error);
@@ -122,7 +167,11 @@ async function renderMarkdownPage(): Promise<void> {
 }
 
 const observer = new MutationObserver(() => void renderMarkdownPage());
-observer.observe(document.documentElement, { childList: true, subtree: true });
+observer.observe(document.documentElement, {
+  childList: true,
+  characterData: true,
+  subtree: true,
+});
 window.addEventListener("turbo:load", () => void renderMarkdownPage());
 window.addEventListener("popstate", () => void renderMarkdownPage());
 void renderMarkdownPage();

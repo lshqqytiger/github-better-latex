@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "GitHub LaTeX",
+  "name": "GitHub Better LaTeX",
   "version": "0.1.0",
-  "description": "Render LaTeX in GitHub Markdown.",
+  "description": "Re-render LaTeX in GitHub Markdown.",
   "host_permissions": [
     "https://github.com/*",
     "https://raw.githubusercontent.com/*"
@@ -17,6 +17,11 @@
     "service_worker": "background.js"
   },
   "content_scripts": [
+    {
+      "matches": ["https://github.com/*"],
+      "js": ["copilot-source.js"],
+      "world": "MAIN"
+    },
     {
       "matches": ["https://github.com/*"],
       "js": ["content.js"]
