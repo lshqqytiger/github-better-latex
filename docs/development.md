@@ -14,7 +14,7 @@ pnpm install
 pnpm build
 ```
 
-The build type-checks `src/`, bundles the content script and service worker,
+The build type-checks `src/`, bundles the content scripts and service worker,
 then stages `manifest.json`, KaTeX stylesheets, and fonts in `dist/`. Load
 `dist/` as an unpacked extension in Chromium. `node_modules/` and `dist/` are
 generated and ignored by Git.
@@ -25,6 +25,9 @@ protection.
 
 ## Source Layout
 
+- `src/copilot-math.ts`: exact React message-source extraction and cached rendering.
+- `src/copilot-source.ts`: main-world bridge for original Copilot Markdown.
+- `src/markdown.ts`: shared parser, including display brackets inside paragraphs.
 - `src/content.ts`: GitHub page handling, Markdown rendering, and Copilot
   display-math repair.
 - `src/background.ts`: validates and fetches raw repository Markdown.
@@ -34,6 +37,12 @@ protection.
 
 ## Manual Smoke Checks
 
+Run `pnpm test` for DOM regression checks covering exact source extraction,
+whole-formula rendering, literal parentheses, source validation, message
+boundaries, committed alternate selection, startup retries, message validation,
+source loss, and cleanup. Tests use synthetic React props and HTML;
+they do not verify the live site's private React prop structure.
+
 1. Build and load `dist/` in Chromium.
 2. Open a GitHub repository `.md` blob containing inline `$...$` and `\(...\)`
    math, and display `$$...$$` and `\[...\]` math. Confirm the article is rendered and KaTeX fonts load from
@@ -42,8 +51,12 @@ protection.
    fallback includes a `<pre>` with TeX, such as a formula using
    `\operatorname{...}`. Confirm only that failed block is replaced with
    rendered math.
-4. Confirm successfully rendered math, code blocks, and other message content
-   remain unchanged.
+4. Open a Copilot message whose original source includes `\(H(M)\)` and literal
+   `(H(M))` prose. When source props are available, confirm the formula renders
+   with its inner parentheses intact and the literal prose is unchanged.
+5. Confirm toolbars outside the Markdown body still work, navigate between
+   conversations, and check subsequent responses. If a message is not re-rendered,
+   inspect whether its React ancestry still exposes the expected message props.
 
 After changing the manifest, reload the extension in `chrome://extensions`;
 refresh the GitHub page after every rebuild.

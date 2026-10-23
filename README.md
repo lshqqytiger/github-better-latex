@@ -2,16 +2,30 @@
 
 A Chromium extension that improves LaTeX rendering on GitHub.
 
+## Before And After
+
+**Before:** GitHub Copilot's original rendering.
+
+![GitHub Copilot showing a LaTeX rendering error and raw TeX commands](resources/copilot-before.png)
+
+**After:** With GitHub Better LaTeX enabled.
+
+![GitHub Copilot showing correctly rendered inline and display math](resources/copilot-after.png)
+
 ## Features
 
 - Re-renders repository Markdown blob pages ending in `.md`, using the original
   Markdown source and KaTeX.
 - Repairs failed display-math blocks in Copilot Chat when GitHub's error
   fallback still contains the original TeX source.
+- Re-renders Copilot message bodies from original Markdown when it is available
+  in the message's React props, avoiding guesses about ordinary parentheses.
 
 Markdown math supports `$...$` and `\(...\)` for inline expressions, and
-`$$...$$` and `\[...\]` for display expressions. The Copilot Chat repair only touches failed display-math blocks;
-other message content and successfully rendered equations are left intact.
+`$$...$$` and `\[...\]` for display expressions. Full Copilot rendering hides
+the original Markdown body and displays a rendered sibling, leaving React's
+original nodes and surrounding message controls intact. GitHub-specific widgets
+inside the body appear as standard Markdown output.
 
 ## Install
 
@@ -36,6 +50,8 @@ reload the extension from the extensions page and refresh GitHub.
 ## Scope
 
 Repository rendering currently targets GitHub blob URLs with a `.md` file on a
-single-segment branch name. Copilot Chat repair depends on GitHub retaining the
-failed formula's TeX in a `<pre>` fallback; it does not intercept chat APIs or
-re-render every message. GitHub may change these page structures over time.
+single-segment branch name. Copilot source access relies on private React
+internals and must be verified against the live GitHub version. If the expected
+assistant-message props are absent, the message body is left unchanged; failed
+display math can still be repaired from GitHub's `<pre>` fallback. The extension
+does not guess inline formulas or reconstruct Markdown from rendered HTML.
