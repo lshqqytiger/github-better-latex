@@ -143,6 +143,100 @@ A\centernot\implies B
   });
 });
 
+test("repository Markdown supports Firefox and Chromium runtime APIs", async () => {
+  for (const api of ["browser", "chrome"]) {
+    for (const fails of [false, true]) {
+      const dom = new JSDOM(
+        '<!doctype html><article class="markdown-body entry-content">Original</article>',
+        {
+          runScripts: "outside-only",
+          url: "https://github.com/owner/repository/blob/main/README.md",
+        },
+      );
+      try {
+        const { window } = dom;
+        let request;
+        let warning;
+        const warned = new Promise((resolve) => {
+          window.console.warn = (...args) => {
+            warning = args;
+            resolve();
+          };
+        });
+        const getURL = (name) =>
+          `${api === "browser" ? "moz" : "chrome"}-extension://test/${name}`;
+        if (api === "browser") {
+          window.browser = {
+            runtime: {
+              getURL,
+              sendMessage(message) {
+                request = message;
+                return fails
+                  ? Promise.reject(new Error("Background unavailable"))
+                  : Promise.resolve({
+                      ok: true,
+                      markdown: String.raw`Math: $x^2$`,
+                    });
+              },
+            },
+          };
+        } else {
+          const runtime = {
+            getURL,
+            lastError: undefined,
+            sendMessage(message, callback) {
+              request = message;
+              runtime.lastError = fails
+                ? { message: "Background unavailable" }
+                : undefined;
+              callback(
+                fails
+                  ? undefined
+                  : { ok: true, markdown: String.raw`Math: $x^2$` },
+              );
+              runtime.lastError = undefined;
+            },
+          };
+          window.chrome = { runtime };
+        }
+        window.eval(
+          scripts.outputFiles.find((file) => file.path.endsWith("content.js"))
+            .text,
+        );
+        const article = window.document.querySelector("article");
+        assert.equal(
+          window.document
+            .querySelector("link[data-github-latex-stylesheet]")
+            .href.startsWith(
+              `${api === "browser" ? "moz" : "chrome"}-extension://`,
+            ),
+          true,
+        );
+        if (fails) {
+          await warned;
+          assert.match(warning[1].message, /Background unavailable/);
+          assert.equal(article.textContent, "Original");
+          assert.equal(article.dataset.githubLatexRendered, undefined);
+        } else {
+          await waitForDom(window, () =>
+            Boolean(article.querySelector(".katex")),
+          );
+          assert.equal(
+            article.dataset.githubLatexRendered,
+            window.location.href,
+          );
+        }
+        assert.deepEqual(JSON.parse(JSON.stringify(request)), {
+          type: "fetch-markdown",
+          url: "https://github.com/owner/repository/raw/refs/heads/main/README.md",
+        });
+      } finally {
+        dom.window.close();
+      }
+    }
+  }
+});
+
 test("Copilot display-error fallback supports centernot-implies", () => {
   const dom = new JSDOM(
     String.raw`<!doctype html><math-renderer class="js-display-math"><div class="flash-error">Unsupported command</div><pre>A\centernot\implies B</pre></math-renderer>`,

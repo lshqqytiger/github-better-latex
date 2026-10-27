@@ -1,6 +1,6 @@
 # GitHub Better LaTeX
 
-A Chromium extension that improves LaTeX rendering on GitHub.
+A Chromium and Firefox extension that improves LaTeX rendering on GitHub.
 
 ## Before And After
 
@@ -27,6 +27,8 @@ preserved; GitHub-specific body widgets appear as standard Markdown output.
 
 ## Install
 
+### Chromium
+
 Build the unpacked extension:
 
 ```sh
@@ -37,6 +39,20 @@ pnpm build
 Then open `chrome://extensions`, enable **Developer mode**, select **Load
 unpacked**, and choose the generated `dist/` directory. After rebuilding,
 reload the extension from the extensions page and refresh GitHub.
+
+### Firefox
+
+Firefox 140 or newer is required (142+ on Android). Build the Firefox version:
+
+```sh
+pnpm install
+pnpm build:firefox
+```
+
+Open `about:debugging#/runtime/this-firefox`, select **Load Temporary Add-on**,
+and choose `dist/firefox/manifest.json`. Reload the add-on there after rebuilding,
+then refresh GitHub. Temporary add-ons are removed when Firefox restarts;
+permanent installation in standard Firefox requires a Mozilla-signed package.
 
 ## Documentation
 

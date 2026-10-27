@@ -1,15 +1,19 @@
 # Architecture
 
 The Manifest V3 extension uses content scripts for page integration and a
-service worker for repository Markdown fetches.
+background context for repository Markdown fetches: a service worker in Chromium
+and a non-persistent background script in Firefox. The Firefox build derives its
+manifest from the shared manifest, preserving permissions and the MAIN-world
+Copilot bridge. Runtime messaging uses callbacks supported by both browsers'
+`chrome` namespace, with `runtime.lastError` handled inside the callback.
 
 ## Repository Markdown
 
 1. The content script recognizes GitHub paths shaped like
    `/{owner}/{repository}/blob/{branch}/{file}.md`.
 2. It maps the path to the matching `raw/refs/heads/` URL and asks the service
-   worker to fetch it with the browser's GitHub session credentials.
-3. The worker accepts requests only from `github.com` and only for raw URLs on
+   background context to fetch it with the browser's GitHub session credentials.
+3. The background context accepts requests only from `github.com` and only for raw URLs on
    `github.com` with the expected repository path. GitHub may redirect these
    requests to `raw.githubusercontent.com`.
 4. The content script renders the source with markdown-it and

@@ -2,10 +2,11 @@
   "name": "github-better-latex",
   "version": "0.1.0",
   "packageManager": "pnpm@12.11.2",
-  "description": "A Chromium extension for rendering LaTeX in GitHub Markdown.",
+  "description": "A Chromium and Firefox extension for rendering LaTeX in GitHub Markdown.",
   "scripts": {
     "test": "node --test tests/*.test.mjs",
-    "build": "tsc --noEmit -p tsconfig.json && esbuild src/content.ts src/background.ts src/copilot-source.ts --bundle --format=iife --outdir=dist --entry-names=[name] && node scripts/copy-manifest.mjs"
+    "build": "tsc --noEmit -p tsconfig.json && esbuild src/content.ts src/background.ts src/copilot-source.ts --bundle --format=iife --outdir=dist --entry-names=[name] && node scripts/copy-manifest.mjs",
+    "build:firefox": "tsc --noEmit -p tsconfig.json && esbuild src/content.ts src/background.ts src/copilot-source.ts --bundle --format=iife --outdir=dist/firefox --entry-names=[name] && node scripts/copy-manifest.mjs firefox"
   },
   "dependencies": {
     "dompurify": "^3.3.1",

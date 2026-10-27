@@ -16,6 +16,32 @@ interface FetchMarkdownResponse {
   error?: string;
 }
 
+interface BrowserExtensionApi {
+  runtime: {
+    getURL(path: string): string;
+    sendMessage(message: {
+      type: "fetch-markdown";
+      url: string;
+    }): Promise<FetchMarkdownResponse>;
+  };
+}
+
+interface ChromiumExtensionApi {
+  runtime: {
+    getURL(path: string): string;
+    lastError?: { message?: string };
+    sendMessage(
+      message: { type: "fetch-markdown"; url: string },
+      callback: (response: FetchMarkdownResponse) => void,
+    ): void;
+  };
+}
+
+const extensionGlobals = globalThis as typeof globalThis & {
+  browser?: BrowserExtensionApi;
+  chrome?: ChromiumExtensionApi;
+};
+
 let pendingPageUrl: string | null = null;
 
 function installStylesheet(filename: string): void {
@@ -27,7 +53,12 @@ function installStylesheet(filename: string): void {
 
   const stylesheet = document.createElement("link");
   stylesheet.rel = "stylesheet";
-  stylesheet.href = window.chrome.runtime.getURL(filename);
+  const runtime =
+    extensionGlobals.browser?.runtime ?? extensionGlobals.chrome?.runtime;
+  if (!runtime) {
+    return;
+  }
+  stylesheet.href = runtime.getURL(filename);
   stylesheet.dataset.githubLatexStylesheet = filename;
   document.head.append(stylesheet);
 }
@@ -143,10 +174,24 @@ async function renderMarkdownPage(): Promise<void> {
 
   pendingPageUrl = pageUrl.href;
   try {
-    const response = (await window.chrome.runtime.sendMessage({
-      type: "fetch-markdown",
-      url: rawUrl,
-    })) as FetchMarkdownResponse;
+    const request = { type: "fetch-markdown" as const, url: rawUrl };
+    const response = extensionGlobals.browser
+      ? await extensionGlobals.browser.runtime.sendMessage(request)
+      : await new Promise<FetchMarkdownResponse>((resolve, reject) => {
+          const runtime = extensionGlobals.chrome?.runtime;
+          if (!runtime) {
+            reject(new Error("Browser extension runtime API is unavailable."));
+            return;
+          }
+          runtime.sendMessage(request, (response: FetchMarkdownResponse) => {
+            const error = runtime.lastError;
+            if (error) {
+              reject(new Error(error.message));
+            } else {
+              resolve(response);
+            }
+          });
+        });
     if (!response?.ok || typeof response.markdown !== "string") {
       throw new Error(response?.error ?? "The raw Markdown request failed.");
     }

@@ -14,9 +14,20 @@ pnpm install
 pnpm build
 ```
 
-The build type-checks `src/`, bundles the content scripts and service worker,
+The build type-checks `src/`, bundles the content scripts and background code,
 then stages `manifest.json`, KaTeX stylesheets, and fonts in `dist/`. Load
-`dist/` as an unpacked extension in Chromium. `node_modules/` and `dist/` are
+`dist/` as an unpacked extension in Chromium.
+
+For Firefox 140+, run `pnpm build:firefox`. This creates `dist/firefox/` with
+a Firefox-specific manifest: a background script instead of a service worker,
+a stable Gecko add-on ID, and a declaration that no data is collected. The
+minimum version includes support for MAIN-world content scripts and the data
+collection declaration; Firefox for Android requires 142+ for that declaration.
+Both targets use the same JavaScript bundles and assets.
+Load `dist/firefox/manifest.json` via **Load Temporary Add-on** in
+`about:debugging#/runtime/this-firefox`.
+
+`node_modules/` and `dist/` are
 generated and ignored by Git.
 
 `pnpm-workspace.yaml` allows esbuild's install script for its platform binary.
@@ -35,10 +46,12 @@ generated and ignored by Git.
 
 ## Manual Smoke Checks
 
-Run `pnpm test` for parser and Copilot lifecycle regressions. Tests use synthetic
+Run `pnpm test` for browser packaging, callback messaging, parser, and Copilot
+lifecycle regressions. Tests use synthetic
 React props and HTML; live GitHub compatibility requires browser checks.
 
-1. Build and load `dist/` in Chromium.
+1. Build and load `dist/` in Chromium or `dist/firefox/` in Firefox. Run these
+   checks in both browsers when changing shared extension code.
 2. Open a GitHub repository `.md` blob containing inline `$...$` and `\(...\)`
    math, and display `$$...$$` and `\[...\]` math. Confirm rendering and font
    loading from the extension package.
@@ -53,5 +66,8 @@ React props and HTML; live GitHub compatibility requires browser checks.
    conversations, and check subsequent responses. If a message is not re-rendered,
    inspect whether its React ancestry still exposes the expected message props.
 
-After changing the manifest, reload the extension in `chrome://extensions`;
-refresh the GitHub page after every rebuild.
+After changing the manifest, reload the extension in `chrome://extensions` or
+Firefox's `about:debugging#/runtime/this-firefox`; refresh the GitHub page after
+every rebuild. Firefox temporary installations last only for the current browser
+session. Distributing a permanently installable Firefox add-on requires Mozilla
+signing; package the contents of `dist/firefox/`, not its parent directory.
