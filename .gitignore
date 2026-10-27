@@ -1,3 +1,5 @@
+.context/
+.github/
+
 node_modules/
 dist/
-do-not-commit/
