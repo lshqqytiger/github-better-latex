@@ -1,6 +1,6 @@
 {
   "name": "github-better-latex",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "packageManager": "pnpm@12.11.2",
   "description": "A Chromium and Firefox extension for rendering LaTeX in GitHub Markdown.",
   "scripts": {

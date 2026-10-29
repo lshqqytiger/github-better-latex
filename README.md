@@ -20,6 +20,7 @@ A Chromium and Firefox extension that improves LaTeX rendering on GitHub.
   fallback still contains the original TeX source.
 - Re-renders Copilot message bodies from original Markdown when it is available
   in the message's React props.
+- Supports legacy Copilot chat and the updated `/copilot/tasks/` session view.
 
 Markdown math supports `$...$` and `\(...\)` for inline expressions, and
 `$$...$$` and `\[...\]` for display expressions. Copilot message controls are

@@ -31,7 +31,7 @@ delimiters, and unclosed formulas are left untouched.
 
 ## Copilot Chat
 
-On `/copilot` and `/copilot/c/` pages, the same observer looks for failed display-math
+On `/copilot`, `/copilot/c/`, and `/copilot/tasks/` pages, the same observer looks for failed display-math
 `<math-renderer>` elements. GitHub's failure fallback includes the original TeX
 inside a `<pre>` element. The extension passes that source to KaTeX in display
 mode and replaces only the failed renderer when full source is unavailable.
@@ -39,8 +39,12 @@ mode and replaces only the failed renderer when full source is unavailable.
 A separate `MAIN`-world script reads React fiber ancestors of each
 `[data-copilot-markdown="true"]` body, stopping at the enclosing message's DOM
 boundary. The root's committed fiber selects the active alternate after React
-updates. The bridge accepts only `message` props containing an assistant role, string
-ID, and string content. This relies on private React internals.
+updates. Legacy chat reads `message` props containing an assistant role, string
+ID, and string content. The updated session view reads string renderer props
+(`markdown`, `source`, `content`, `text`, or `children`) within a keyed
+`data-ahp-part-key` inside a `data-turn-id` turn. Host-element children are not
+used as source. Parts are handled separately, and user messages outside these
+part containers are excluded. Both paths rely on private React internals.
 
 The bridge sends the original Markdown and a per-element token using
 `window.postMessage`. The isolated content script validates the envelope,

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "GitHub Better LaTeX",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Re-render LaTeX in GitHub Markdown.",
   "host_permissions": [
     "https://github.com/*",
