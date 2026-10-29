@@ -4,6 +4,7 @@ import DOMPurify from "dompurify";
 import katex from "katex";
 import {
   cleanupCopilotMarkdown,
+  isCopilotPage,
   renderCopilotMarkdown,
   restoreCopilotMarkdown,
 } from "./copilot-math";
@@ -70,8 +71,7 @@ window.addEventListener("message", (event: MessageEvent<unknown>) => {
   if (
     event.source !== window ||
     event.origin !== location.origin ||
-    (location.pathname !== "/copilot" &&
-      !location.pathname.startsWith("/copilot/c/"))
+    !isCopilotPage(location.pathname)
   ) {
     return;
   }
@@ -109,10 +109,7 @@ window.postMessage(
 );
 
 function renderCopilotMathErrors(): void {
-  if (
-    location.pathname !== "/copilot" &&
-    !location.pathname.startsWith("/copilot/c/")
-  ) {
+  if (!isCopilotPage(location.pathname)) {
     return;
   }
 

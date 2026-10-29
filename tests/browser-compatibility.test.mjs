@@ -14,6 +14,8 @@ for (const target of ["chromium", "firefox"]) {
       await readFile(`${directory}/manifest.json`, "utf8"),
     );
     const source = JSON.parse(await readFile("manifest.json", "utf8"));
+    const metadata = JSON.parse(await readFile("package.json", "utf8"));
+    assert.equal(manifest.version, metadata.version);
 
     if (target === "firefox") {
       assert.deepEqual(manifest.background, { scripts: ["background.js"] });

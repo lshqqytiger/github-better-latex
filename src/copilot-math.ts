@@ -10,6 +10,14 @@ export interface CopilotMarkdown {
   content: string;
 }
 
+export function isCopilotPage(pathname: string): boolean {
+  return (
+    pathname === "/copilot" ||
+    pathname === "/copilot/" ||
+    /^\/copilot\/(?:c|tasks)\/[^/]+\/?$/.test(pathname)
+  );
+}
+
 function getCommittedFiber(fiber: ReactFiber): ReactFiber | null {
   let ancestor = fiber;
   const visited = new Set<ReactFiber>();
@@ -51,8 +59,34 @@ function readMessage(props: unknown): CopilotMarkdown | null {
   return { id: message.id, content: message.content };
 }
 
+function readRendererSource(
+  props: unknown,
+  id: string,
+): CopilotMarkdown | null {
+  if (typeof props !== "object" || props === null) {
+    return null;
+  }
+  for (const key of [
+    "markdown",
+    "source",
+    "content",
+    "text",
+    "children",
+  ] as const) {
+    if (key in props) {
+      const content = (props as Record<string, unknown>)[key];
+      if (typeof content === "string") {
+        return { id, content };
+      }
+    }
+  }
+  return null;
+}
+
 export function getCopilotMarkdown(root: HTMLElement): CopilotMarkdown | null {
-  const container = root.closest(".message-container");
+  const part = root.closest("[data-ahp-part-key]");
+  const modernPart = part?.closest("[data-turn-id]") ? part : null;
+  const container = modernPart ?? root.closest(".message-container");
   if (!container) {
     return null;
   }
@@ -74,7 +108,14 @@ export function getCopilotMarkdown(root: HTMLElement): CopilotMarkdown | null {
     ) {
       break;
     }
-    const source = readMessage(fiber.memoizedProps);
+    const source = modernPart
+      ? fiber.stateNode instanceof Element
+        ? null
+        : readRendererSource(
+            fiber.memoizedProps,
+            modernPart.getAttribute("data-ahp-part-key")!,
+          )
+      : readMessage(fiber.memoizedProps);
     if (source) {
       return source;
     }

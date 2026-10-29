@@ -1,4 +1,4 @@
-import { getCopilotMarkdown } from "./copilot-math";
+import { getCopilotMarkdown, isCopilotPage } from "./copilot-math";
 
 const snapshots = new WeakMap<HTMLElement, { content: string; html: string }>();
 let scheduled = false;
@@ -8,10 +8,7 @@ function publishSources(): void {
   scheduled = false;
   const replay = replaySources;
   replaySources = false;
-  if (
-    location.pathname !== "/copilot" &&
-    !location.pathname.startsWith("/copilot/c/")
-  ) {
+  if (!isCopilotPage(location.pathname)) {
     return;
   }
   document

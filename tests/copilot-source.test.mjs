@@ -416,6 +416,80 @@ More \[
   });
 });
 
+test("recognizes current task routes and legacy chat without matching unrelated pages", () => {
+  withMessage((root, helpers) => {
+    for (const pathname of [
+      "/copilot",
+      "/copilot/",
+      "/copilot/c/legacy",
+      "/copilot/tasks/current",
+      "/copilot/tasks/current/",
+    ]) {
+      assert.equal(helpers.isCopilotPage(pathname), true, pathname);
+    }
+    for (const pathname of [
+      "/copilot/spaces",
+      "/copilot/customize",
+      "/copilot/tasks/",
+      "/owner/repo/blob/main/README.md",
+    ]) {
+      assert.equal(helpers.isCopilotPage(pathname), false, pathname);
+    }
+  });
+});
+
+test("reads modern assistant parts separately and never reads the user message", () => {
+  withMessage((root, helpers) => {
+    const container = root.parentElement;
+    container.className = "";
+    container.dataset.ahpPartKey = "part-one";
+    const turn = root.ownerDocument.createElement("li");
+    turn.dataset.turnId = "turn-one";
+    container.replaceWith(turn);
+    turn.append(container);
+    root.__reactFiber$test = {
+      stateNode: root,
+      memoizedProps: { children: "Rendered, broken text" },
+      return: {
+        stateNode: null,
+        memoizedProps: { markdown: String.raw`\(P(A\mid B)\)` },
+      },
+    };
+    assert.equal(
+      helpers.getCopilotMarkdown(root).content,
+      String.raw`\(P(A\mid B)\)`,
+    );
+    assert.equal(helpers.getCopilotMarkdown(root).id, "part-one");
+    const second = container.cloneNode(true);
+    second.dataset.ahpPartKey = "part-two";
+    turn.append(second);
+    const secondRoot = second.querySelector("[data-copilot-markdown]");
+    secondRoot.__reactFiber$test = {
+      stateNode: secondRoot,
+      return: { memoizedProps: { children: String.raw`Second \(P(A)\)` } },
+    };
+    assert.equal(
+      helpers.getCopilotMarkdown(secondRoot).content,
+      String.raw`Second \(P(A)\)`,
+    );
+    const user = root.ownerDocument.createElement("div");
+    user.dataset.copilotMarkdown = "true";
+    user.__reactFiber$test = {
+      return: { memoizedProps: { markdown: "User text" } },
+    };
+    turn.prepend(user);
+    assert.equal(helpers.getCopilotMarkdown(user), null);
+    root.__reactFiber$test = {
+      stateNode: root,
+      return: {
+        stateNode: turn,
+        memoizedProps: { markdown: "Wrong part outside boundary" },
+      },
+    };
+    assert.equal(helpers.getCopilotMarkdown(root), null);
+  });
+});
+
 test("reads exact assistant source rather than guessing from rendered parentheses", () => {
   withMessage((root, helpers) => {
     const message = {
@@ -630,115 +704,154 @@ test("restores native hidden and display attributes exactly", () => {
   });
 });
 
-test("bundled bridge retries startup, validates messages, and restores native content", async () => {
-  const dom = new JSDOM(
-    '<!doctype html><div class="message-container"><div data-copilot-markdown="true">Native body</div><button>Copy</button></div>',
-    {
-      runScripts: "outside-only",
-      url: "https://github.com/copilot/c/test-thread",
-    },
-  );
-  const { window } = dom;
-  try {
-    const root = window.document.querySelector("[data-copilot-markdown]");
-    const nativeText = root.firstChild;
-    const message = {
-      id: "answer",
-      role: "assistant",
-      content: String.raw`Literal (H(M)); \(H(M)\)`,
-    };
-    root.__reactFiber$test = {
-      stateNode: root,
-      return: { memoizedProps: { message } },
-    };
-    window.chrome = {
-      runtime: { getURL: (name) => `chrome-extension://test/${name}` },
-    };
-    let enableReceiver = false;
-    let publications = 0;
-    let firstPublication;
-    const published = new Promise((resolve) => {
-      firstPublication = resolve;
-    });
-    window.postMessage = (data) => {
-      if (data?.type === "github-better-latex:copilot-markdown") {
-        publications += 1;
-        firstPublication();
-      }
-      if (enableReceiver) {
-        window.dispatchEvent(
-          new window.MessageEvent("message", {
-            source: window,
-            origin: window.location.origin,
-            data,
-          }),
+for (const layout of ["legacy", "modern"]) {
+  test(`bundled ${layout} bridge retries startup, validates messages, and restores native content`, async () => {
+    const dom = new JSDOM(
+      layout === "modern"
+        ? '<!doctype html><ol><li data-turn-id="turn-one"><div class="UserMessage__example"><div data-copilot-markdown="true">User body</div></div><div class="responseContainer__example"><div data-ahp-part-key="part-one"><div data-copilot-markdown="true">Native body</div></div><button>Copy</button></div></li></ol>'
+        : '<!doctype html><div class="message-container"><div data-copilot-markdown="true">Native body</div><button>Copy</button></div>',
+      {
+        runScripts: "outside-only",
+        url:
+          layout === "modern"
+            ? "https://github.com/copilot/tasks/test-task"
+            : "https://github.com/copilot/c/test-thread",
+      },
+    );
+    const { window } = dom;
+    try {
+      const root = window.document.querySelector(
+        layout === "modern"
+          ? "[data-ahp-part-key] [data-copilot-markdown]"
+          : "[data-copilot-markdown]",
+      );
+      const nativeText = root.firstChild;
+      const message = {
+        id: "answer",
+        role: "assistant",
+        content: String.raw`Literal (H(M)); \(H(M)\)`,
+      };
+      const owner = {
+        memoizedProps:
+          layout === "modern" ? { markdown: message.content } : { message },
+      };
+      root.__reactFiber$test = {
+        stateNode: root,
+        return: owner,
+      };
+      window.chrome = {
+        runtime: { getURL: (name) => `chrome-extension://test/${name}` },
+      };
+      let enableReceiver = false;
+      let publications = 0;
+      let firstPublication;
+      const published = new Promise((resolve) => {
+        firstPublication = resolve;
+      });
+      window.postMessage = (data) => {
+        if (data?.type === "github-better-latex:copilot-markdown") {
+          publications += 1;
+          firstPublication();
+        }
+        if (enableReceiver) {
+          window.dispatchEvent(
+            new window.MessageEvent("message", {
+              source: window,
+              origin: window.location.origin,
+              data,
+            }),
+          );
+        }
+      };
+      window.eval(
+        scripts.outputFiles.find((file) =>
+          file.path.endsWith("copilot-source.js"),
+        ).text,
+      );
+      await published;
+      enableReceiver = true;
+      window.eval(
+        scripts.outputFiles.find((file) => file.path.endsWith("content.js"))
+          .text,
+      );
+      const getOutput = () =>
+        window.document.querySelector("[data-github-latex-copilot-output]");
+      await waitForDom(window, () => getOutput()?.querySelector(".katex-html"));
+      assert.equal(
+        getOutput().querySelector(".katex-html").textContent,
+        "H(M)",
+      );
+      assert.equal(root.firstChild, nativeText);
+      assert.equal(root.hidden, true);
+      if (layout === "modern") {
+        const user = window.document.querySelector(
+          ".UserMessage__example [data-copilot-markdown]",
         );
+        assert.equal(user.hidden, false);
+        assert.equal(user.textContent, "User body");
+        assert.equal(user.dataset.githubLatexSourceId, undefined);
       }
-    };
-    window.eval(
-      scripts.outputFiles.find((file) =>
-        file.path.endsWith("copilot-source.js"),
-      ).text,
-    );
-    await published;
-    enableReceiver = true;
-    window.eval(
-      scripts.outputFiles.find((file) => file.path.endsWith("content.js")).text,
-    );
-    const getOutput = () =>
-      window.document.querySelector("[data-github-latex-copilot-output]");
-    await waitForDom(window, () => getOutput()?.querySelector(".katex-html"));
-    assert.equal(getOutput().querySelector(".katex-html").textContent, "H(M)");
-    assert.equal(root.firstChild, nativeText);
-    assert.equal(root.hidden, true);
-    const before = getOutput().innerHTML;
-    const envelope = {
-      type: "github-better-latex:copilot-markdown",
-      token: root.dataset.githubLatexSourceId,
-      page: window.location.href,
-      content: "Incorrect content",
-    };
-    for (const event of [
-      { source: window, origin: "https://example.com", data: envelope },
-      { source: null, origin: window.location.origin, data: envelope },
-      {
-        source: window,
-        origin: window.location.origin,
-        data: { ...envelope, page: "https://github.com/copilot/c/old-thread" },
-      },
-      {
-        source: window,
-        origin: window.location.origin,
-        data: { ...envelope, token: "unknown" },
-      },
-    ]) {
-      window.dispatchEvent(new window.MessageEvent("message", event));
-      assert.equal(getOutput().innerHTML, before);
+      const before = getOutput().innerHTML;
+      const envelope = {
+        type: "github-better-latex:copilot-markdown",
+        token: root.dataset.githubLatexSourceId,
+        page: window.location.href,
+        content: "Incorrect content",
+      };
+      for (const event of [
+        { source: window, origin: "https://example.com", data: envelope },
+        { source: null, origin: window.location.origin, data: envelope },
+        {
+          source: window,
+          origin: window.location.origin,
+          data: {
+            ...envelope,
+            page: "https://github.com/copilot/c/old-thread",
+          },
+        },
+        {
+          source: window,
+          origin: window.location.origin,
+          data: { ...envelope, token: "unknown" },
+        },
+      ]) {
+        window.dispatchEvent(new window.MessageEvent("message", event));
+        assert.equal(getOutput().innerHTML, before);
+      }
+      message.content = String.raw`\(H(M\mid C)\)`;
+      if (layout === "modern") {
+        owner.memoizedProps.markdown = message.content;
+      }
+      root.firstChild.data = "Native streaming update";
+      await waitForDom(
+        window,
+        () =>
+          getOutput()?.querySelector(".katex-html")?.textContent ===
+          "H(M\u2223C)",
+      );
+      assert.equal(root.firstChild, nativeText);
+      message.role = "user";
+      if (layout === "modern") {
+        owner.memoizedProps = {};
+      }
+      root.firstChild.data = "Native restored body";
+      await waitForDom(window, () => !getOutput());
+      assert.equal(root.hidden, false);
+      assert.equal(root.textContent, "Native restored body");
+      assert.ok(
+        publications <= 4,
+        "Bridge should not repeatedly publish its own output changes",
+      );
+      message.role = "assistant";
+      if (layout === "modern") {
+        owner.memoizedProps = { markdown: message.content };
+      }
+      root.firstChild.data = "Native body again";
+      await waitForDom(window, () => getOutput());
+      root.remove();
+      await waitForDom(window, () => !getOutput());
+    } finally {
+      window.close();
     }
-    message.content = String.raw`\(H(M\mid C)\)`;
-    root.firstChild.data = "Native streaming update";
-    await waitForDom(
-      window,
-      () =>
-        getOutput()?.querySelector(".katex-html")?.textContent ===
-        "H(M\u2223C)",
-    );
-    assert.equal(root.firstChild, nativeText);
-    message.role = "user";
-    root.firstChild.data = "Native restored body";
-    await waitForDom(window, () => !getOutput());
-    assert.equal(root.hidden, false);
-    assert.equal(root.textContent, "Native restored body");
-    assert.ok(
-      publications <= 4,
-      "Bridge should not repeatedly publish its own output changes",
-    );
-    message.role = "assistant";
-    root.firstChild.data = "Native body again";
-    await waitForDom(window, () => getOutput());
-    root.remove();
-    await waitForDom(window, () => !getOutput());
-  } finally {
-    window.close();
-  }
-});
+  });
+}
