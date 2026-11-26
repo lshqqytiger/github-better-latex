@@ -84,9 +84,20 @@ function readRendererSource(
 }
 
 export function getCopilotMarkdown(root: HTMLElement): CopilotMarkdown | null {
+  const turn = root.closest("[data-turn-id]");
   const part = root.closest("[data-ahp-part-key]");
-  const modernPart = part?.closest("[data-turn-id]") ? part : null;
-  const container = modernPart ?? root.closest(".message-container");
+  const modernPart = turn ? part : null;
+  const replyColumn = root.parentElement;
+  const eventReply = replyColumn?.matches(
+    '[data-testid="event-session-logs"] [data-turn-id] > .d-flex.flex-row.flex-items-start.gap-2.px-1.mb-2 > .flex-1.min-width-0',
+  )
+    ? replyColumn
+    : null;
+  const rendererId =
+    modernPart?.getAttribute("data-ahp-part-key") ??
+    (eventReply ? turn?.getAttribute("data-turn-id") : null);
+  const container =
+    modernPart ?? eventReply ?? root.closest(".message-container");
   if (!container) {
     return null;
   }
@@ -108,14 +119,12 @@ export function getCopilotMarkdown(root: HTMLElement): CopilotMarkdown | null {
     ) {
       break;
     }
-    const source = modernPart
-      ? fiber.stateNode instanceof Element
-        ? null
-        : readRendererSource(
-            fiber.memoizedProps,
-            modernPart.getAttribute("data-ahp-part-key")!,
-          )
-      : readMessage(fiber.memoizedProps);
+    const source =
+      rendererId != null
+        ? fiber.stateNode instanceof Element
+          ? null
+          : readRendererSource(fiber.memoizedProps, rendererId)
+        : readMessage(fiber.memoizedProps);
     if (source) {
       return source;
     }

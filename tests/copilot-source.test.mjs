@@ -490,6 +490,48 @@ test("reads modern assistant parts separately and never reads the user message",
   });
 });
 
+test("reads exact assistant source from event session logs only within the reply", () => {
+  withMessage((root, helpers, render) => {
+    const logs = root.parentElement;
+    logs.className = "";
+    logs.dataset.testid = "event-session-logs";
+    logs.innerHTML = `
+      <div data-turn-id="assistant-turn">
+        <div class="thinkingContent__example"><div data-copilot-markdown="true">Thinking</div></div>
+        <div class="d-flex flex-row flex-items-start gap-2 px-1 mb-2">
+          <svg></svg>
+          <div class="flex-1 min-width-0"><div data-copilot-markdown="true">(P(A))</div></div>
+        </div>
+      </div>
+      <div data-turn-id="user-turn">
+        <div class="bubble__example"><div data-copilot-markdown="true">User prompt</div></div>
+      </div>`;
+    const [thinking, reply, user] = logs.querySelectorAll(
+      "[data-copilot-markdown]",
+    );
+    const markdown = String.raw`\(P(A)\)`;
+    for (const node of [thinking, reply, user]) {
+      node.__reactFiber$test = {
+        stateNode: node,
+        memoizedProps: { children: node.textContent },
+        return: { memoizedProps: { markdown } },
+      };
+    }
+    assert.equal(helpers.getCopilotMarkdown(thinking), null);
+    assert.equal(helpers.getCopilotMarkdown(user), null);
+    const source = helpers.getCopilotMarkdown(reply);
+    assert.equal(source?.id, "assistant-turn");
+    assert.equal(source?.content, markdown);
+    assert.ok(
+      helpers
+        .renderCopilotMarkdown(reply, source.content, render)
+        .querySelector(".katex"),
+    );
+    reply.__reactFiber$test.return.stateNode = reply.closest("[data-turn-id]");
+    assert.equal(helpers.getCopilotMarkdown(reply), null);
+  });
+});
+
 test("reads exact assistant source rather than guessing from rendered parentheses", () => {
   withMessage((root, helpers) => {
     const message = {
